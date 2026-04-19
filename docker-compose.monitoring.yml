@@ -1,0 +1,84 @@
+# ===========================================
+# Docker Compose - Monitoring Stack
+# Prometheus + Grafana + Nginx Exporter
+# for application monitoring and alerting.
+# ===========================================
+
+services:
+  # Application (production instance for monitoring)
+  deakin-app:
+    image: deakin-app:${RELEASE_VERSION:-latest}
+    container_name: deakin-app-monitored
+    ports:
+      - "80:80"
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    networks:
+      - monitoring-network
+
+  # Nginx Exporter - scrapes nginx stub_status metrics
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.1
+    container_name: nginx-exporter
+    command:
+      - --nginx.scrape-uri=http://deakin-app/nginx_status
+    ports:
+      - "9113:9113"
+    depends_on:
+      - deakin-app
+    restart: unless-stopped
+    networks:
+      - monitoring-network
+
+  # Prometheus - metrics collection and alerting
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    depends_on:
+      - nginx-exporter
+    restart: unless-stopped
+    networks:
+      - monitoring-network
+
+  # Grafana - dashboards and visualization
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/deakin-app-dashboard.json
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - monitoring-network
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  monitoring-network:
+    driver: bridge

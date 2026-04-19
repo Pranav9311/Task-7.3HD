@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+test-results
+.git
+*.md
+.env*
+docker-compose*.yml
+monitoring/

@@ -1,0 +1,34 @@
+# ============================================
+# Prometheus Configuration
+# Scrapes metrics from the Deakin app (via
+# nginx-exporter) and loads alert rules.
+# ============================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# Alert rules file
+rule_files:
+  - "alert-rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Nginx metrics via nginx-exporter
+  - job_name: "nginx"
+    static_configs:
+      - targets: ["nginx-exporter:9113"]
+    metrics_path: /metrics
+
+  # Application health endpoint
+  - job_name: "deakin-app"
+    metrics_path: /health
+    static_configs:
+      - targets: ["deakin-app:80"]
+    scrape_interval: 10s

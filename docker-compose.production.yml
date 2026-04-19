@@ -1,0 +1,44 @@
+# ===========================================
+# Docker Compose - Production Deployment
+# Production environment with resource limits,
+# logging, and auto-restart policies.
+# ===========================================
+
+services:
+  deakin-app-production:
+    image: deakin-app:${RELEASE_VERSION:-latest}
+    container_name: deakin-app-production
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+      - APP_NAME=deakin-app-production
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - production-network
+    labels:
+      - "app.environment=production"
+      - "app.version=${RELEASE_VERSION:-latest}"
+
+networks:
+  production-network:
+    driver: bridge

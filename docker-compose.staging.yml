@@ -1,0 +1,37 @@
+# ===========================================
+# Docker Compose - Staging Deployment
+# Deploys the app to a staging environment
+# for verification before production release.
+# ===========================================
+
+services:
+  deakin-app-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_VERSION: "${BUILD_VERSION:-staging-latest}"
+        BUILD_DATE: "${BUILD_DATE:-0000-00-00}"
+    image: deakin-app:staging
+    container_name: deakin-app-staging
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=staging
+      - APP_NAME=deakin-app-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - staging-network
+    labels:
+      - "app.environment=staging"
+      - "app.version=${BUILD_VERSION:-staging-latest}"
+
+networks:
+  staging-network:
+    driver: bridge

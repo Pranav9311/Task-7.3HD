@@ -1,0 +1,68 @@
+# ============================================
+# Prometheus Alert Rules
+# Defines alerting conditions for the
+# Deakin Learning App monitoring stack.
+# ============================================
+
+groups:
+  - name: deakin-app-alerts
+    rules:
+      # Alert: Application is down
+      - alert: AppDown
+        expr: up{job="nginx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Deakin App is DOWN"
+          description: "The application has been unreachable for more than 1 minute. Immediate action required."
+
+      # Alert: High error rate (5xx responses)
+      - alert: HighErrorRate
+        expr: rate(nginx_http_requests_total{status=~"5.."}[5m]) / rate(nginx_http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate detected"
+          description: "More than 5% of requests are returning 5xx errors over the last 5 minutes."
+
+      # Alert: High number of active connections
+      - alert: HighConnectionCount
+        expr: nginx_connections_active > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of active Nginx connections"
+          description: "Active connections have exceeded 500 for more than 5 minutes. Consider scaling."
+
+      # Alert: Nginx request spike
+      - alert: RequestSpike
+        expr: rate(nginx_http_requests_total[1m]) > 100
+        for: 3m
+        labels:
+          severity: info
+        annotations:
+          summary: "Unusual request spike detected"
+          description: "Request rate has exceeded 100 req/min for 3 minutes. Monitor for potential DDoS or traffic spike."
+
+      # Alert: Health check failures
+      - alert: HealthCheckFailing
+        expr: up{job="deakin-app"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Application health check is FAILING"
+          description: "The /health endpoint is not responding. The application may be crashed or unresponsive."
+
+      # Alert: Prometheus target down
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus target {{ $labels.instance }} is down"
+          description: "A monitored target has been unreachable for 5 minutes."
