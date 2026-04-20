@@ -1,1 +1,1 @@
-Task 7.3 HD
+Task 7.3 
